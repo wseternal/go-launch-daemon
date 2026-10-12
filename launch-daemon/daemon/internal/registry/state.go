@@ -80,7 +80,7 @@ var validTransitions = map[ServiceState][]ServiceState{
 	StateStarting:   {StateRunning, StateFailed, StateStopping},
 	StateRunning:    {StateStopping, StateFailed},
 	StateStopping:   {StateStopped, StateFailed},
-	StateStopped:    {StateRestarting, StateStarting},
+	StateStopped:    {StateRestarting, StateStarting, StateFailed},
 	StateFailed:     {StateRestarting, StateStarting},
 	StateRestarting: {StateBackoff, StateStarting},
 	StateBackoff:    {StateStarting, StateStopped, StateFailed},
