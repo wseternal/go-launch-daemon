@@ -10,6 +10,9 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"launchd/internal/registry"
+	"launchd/internal/supervisor"
 )
 
 // ServerConfig holds configuration for the API server.
@@ -29,6 +32,8 @@ type Server struct {
 	httpSrv   *http.Server
 	listener  net.Listener
 	startTime time.Time
+	reg       *registry.Registry
+	sup       *supervisor.Supervisor
 	mu        sync.RWMutex
 }
 
