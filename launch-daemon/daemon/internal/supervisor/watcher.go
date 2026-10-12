@@ -25,13 +25,15 @@ type serviceWatcher struct {
 	ring *RingBuffer
 	file *FileWriter
 
+	restart *RestartEngine
+
 	stopCh chan struct{} // closed to signal graceful stop
 	done   chan struct{} // closed when watcher goroutine finishes
 	ready  chan struct{} // closed when watcher enters its select loop
 }
 
 // newServiceWatcher creates a watcher for a service.
-func newServiceWatcher(name string, spec registry.Spec, reg *registry.Registry, bus *eventbus.Bus, logDir, apiAddr string) *serviceWatcher {
+func newServiceWatcher(name string, spec registry.Spec, reg *registry.Registry, bus *eventbus.Bus, logDir, apiAddr string, restart *RestartEngine) *serviceWatcher {
 	return &serviceWatcher{
 		name:    name,
 		spec:    spec,
@@ -40,6 +42,7 @@ func newServiceWatcher(name string, spec registry.Spec, reg *registry.Registry, 
 		logDir:  logDir,
 		apiAddr: apiAddr,
 		ring:    NewRingBuffer(ringCap),
+		restart: restart,
 		stopCh:  make(chan struct{}),
 		done:    make(chan struct{}),
 		ready:   make(chan struct{}),
@@ -179,9 +182,17 @@ func (w *serviceWatcher) handleExit(err error) {
 	} else if err == nil {
 		w.reg.Transition(w.name, registry.StateStopped)
 		w.publishState("stopped")
+		// Clean exit — check restart policy (keepAlive=always restarts even clean exits).
+		if w.restart != nil {
+			w.restart.HandleExit(w.name)
+		}
 	} else {
 		w.reg.Transition(w.name, registry.StateFailed)
 		w.publishState("failed")
+		// Non-zero exit — check restart policy.
+		if w.restart != nil {
+			w.restart.HandleExit(w.name)
+		}
 	}
 }
 

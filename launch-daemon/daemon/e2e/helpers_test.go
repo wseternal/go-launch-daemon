@@ -19,14 +19,15 @@ import (
 
 // testEnv holds the shared test environment.
 type testEnv struct {
-	t      *testing.T
-	dir    string
-	reg    *registry.Registry
-	bus    *eventbus.Bus
-	sup    *supervisor.Supervisor
-	srv    *api.Server
-	addr   string
-	ticker string // path to ticker binary
+	t       *testing.T
+	dir     string
+	reg     *registry.Registry
+	bus     *eventbus.Bus
+	sup     *supervisor.Supervisor
+	srv     *api.Server
+	addr    string
+	ticker  string // path to ticker binary (testsvc)
+	echoBin string // path to echo-service binary
 }
 
 func setup(t *testing.T) *testEnv {
@@ -38,6 +39,7 @@ func setup(t *testing.T) *testEnv {
 
 	// Build test binaries.
 	tickerBin := buildBinary(t, "./internal/testsvc/", "testsvc")
+	echoBin := buildExampleBinary(t, "./echo-service/", "echo-service")
 
 	reg := registry.New()
 	bus := eventbus.New()
@@ -60,14 +62,15 @@ func setup(t *testing.T) *testEnv {
 	})
 
 	return &testEnv{
-		t:      t,
-		dir:    dir,
-		reg:    reg,
-		bus:    bus,
-		sup:    sup,
-		srv:    srv,
-		addr:   srv.Addr(),
-		ticker: tickerBin,
+		t:       t,
+		dir:     dir,
+		reg:     reg,
+		bus:     bus,
+		sup:     sup,
+		srv:     srv,
+		addr:    srv.Addr(),
+		ticker:  tickerBin,
+		echoBin: echoBin,
 	}
 }
 
@@ -78,6 +81,20 @@ func buildBinary(t *testing.T, pkg, name string) string {
 	daemonDir := filepath.Join(mustGetDaemonDir(t))
 	cmd := exec.Command("go", "build", "-o", bin, pkg)
 	cmd.Dir = daemonDir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("build %s: %v\n%s", name, err, out)
+	}
+	return bin
+}
+
+func buildExampleBinary(t *testing.T, pkg, name string) string {
+	t.Helper()
+	dir := t.TempDir()
+	bin := filepath.Join(dir, name)
+	examplesDir := filepath.Join(mustGetDaemonDir(t), "..", "examples")
+	cmd := exec.Command("go", "build", "-o", bin, pkg)
+	cmd.Dir = examplesDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("build %s: %v\n%s", name, err, out)

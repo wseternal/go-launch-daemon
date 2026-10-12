@@ -20,6 +20,8 @@ type Supervisor struct {
 	mu       sync.RWMutex
 	watchers map[string]*serviceWatcher
 
+	restart *RestartEngine
+
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
@@ -28,7 +30,7 @@ type Supervisor struct {
 // New creates a new Supervisor.
 func New(reg *registry.Registry, bus *eventbus.Bus, logDir, apiAddr string) *Supervisor {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Supervisor{
+	s := &Supervisor{
 		reg:      reg,
 		bus:      bus,
 		logDir:   logDir,
@@ -37,6 +39,8 @@ func New(reg *registry.Registry, bus *eventbus.Bus, logDir, apiAddr string) *Sup
 		ctx:      ctx,
 		cancel:   cancel,
 	}
+	s.restart = NewRestartEngine(reg, s, DefaultBackoff())
+	return s
 }
 
 // Start begins the supervisor and starts all RunAtLoad services.
@@ -53,6 +57,7 @@ func (s *Supervisor) Start() error {
 // Shutdown stops all services and waits for goroutines to finish.
 func (s *Supervisor) Shutdown() {
 	s.cancel()
+	s.restart.Shutdown()
 
 	s.mu.RLock()
 	names := make([]string, 0, len(s.watchers))
@@ -81,7 +86,7 @@ func (s *Supervisor) StartService(name string) error {
 	}
 
 	s.mu.Lock()
-	w := newServiceWatcher(name, entry.Spec, s.reg, s.bus, s.logDir, s.apiAddr)
+	w := newServiceWatcher(name, entry.Spec, s.reg, s.bus, s.logDir, s.apiAddr, s.restart)
 	s.watchers[name] = w
 	s.mu.Unlock()
 
@@ -93,16 +98,37 @@ func (s *Supervisor) StartService(name string) error {
 		return err
 	}
 
+	// Start the stable-run timer (resets failure count after 30s).
+	s.restart.StartStableTimer(name)
+
 	return nil
 }
 
 // StopService stops a running service gracefully.
 func (s *Supervisor) StopService(name string) error {
+	// Cancel any pending restart first (manual stop suppresses keepalive).
+	s.restart.CancelPending(name)
+	s.restart.CancelStableTimer(name)
+
 	s.mu.RLock()
 	w, ok := s.watchers[name]
 	s.mu.RUnlock()
 
 	if !ok {
+		// No active watcher — service might be in backoff/restarting state.
+		// Transition to stopped if currently in a restart-related state.
+		entry, exists := s.reg.Get(name)
+		if !exists {
+			return fmt.Errorf("service %q not found", name)
+		}
+		state := entry.Status.State
+		if state == registry.StateBackoff || state == registry.StateRestarting || state == registry.StateFailed {
+			s.reg.Transition(name, registry.StateStopped)
+			return nil
+		}
+		if state == registry.StateStopped || state == registry.StateRegistered {
+			return nil // already stopped
+		}
 		return fmt.Errorf("service %q not running", name)
 	}
 
