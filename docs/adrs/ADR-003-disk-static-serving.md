@@ -73,6 +73,6 @@ if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/agent/") {
   assets.
 
 ## References
-- Implementation: `launch-daemon/daemon/internal/api/static.go`, `gzip.go`
-- Server integration: `launch-daemon/daemon/internal/api/server.go`
+- Implementation: `daemon/internal/api/static.go`, `gzip.go`
+- Server integration: `daemon/internal/api/server.go`
 - Plan: `1/plan.md` §0 (static serving), §9 item 4 (rejected go:embed)

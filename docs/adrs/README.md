@@ -27,5 +27,5 @@ and the consequences of the chosen approach.
 - **Format:** Status, Context, Decision, Alternatives Considered, Consequences, References
 - **Lifecycle:** Proposed → Accepted → Superseded / Deprecated
 
-ADR-001 was originally created under `launch-daemon/docs/adr/` during the
-implementation phase. It has been moved here for consistency.
+ADR-001 was originally created during the implementation phase.
+It has been moved here for consistency.

@@ -75,6 +75,6 @@ channels.
   tmp+rename atomic) runs independently of the registry lock.
 
 ## References
-- Implementation: `launch-daemon/daemon/internal/registry/registry.go`
-- State machine: `launch-daemon/daemon/internal/registry/state.go`
+- Implementation: `daemon/internal/registry/registry.go`
+- State machine: `daemon/internal/registry/state.go`
 - Plan: `1/plan.md` §0 (concurrency model), §9 item 5 (rejected actor model)

@@ -79,7 +79,7 @@ prevent double-wait panics.
   This is not yet implemented; deferred pending Linux deployment testing.
 
 ## References
-- Implementation: `launch-daemon/daemon/internal/supervisor/spawn.go`
-- Watcher: `launch-daemon/daemon/internal/supervisor/watcher.go`
-- Stubborn test binary: `launch-daemon/daemon/internal/testsvc/stubborn/main.go`
+- Implementation: `daemon/internal/supervisor/spawn.go`
+- Watcher: `daemon/internal/supervisor/watcher.go`
+- Stubborn test binary: `daemon/internal/testsvc/stubborn/main.go`
 - Plan: `1/plan.md` §0 (adoption from Agent C), T5

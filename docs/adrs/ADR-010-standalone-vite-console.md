@@ -24,7 +24,7 @@ The constraints are:
 **Build the console as a standalone Vite + React application served by the
 daemon, not as pages within the host Next.js app.**
 
-The console lives under `launch-daemon/frontend/` with its own `package.json`,
+The console lives under `frontend/` with its own `package.json`,
 `vite.config.ts`, and build pipeline. The daemon serves the built output
 (`frontend/dist/`) via the `-static` flag (ADR-003). The host Next.js app
 remains a thin portal shell — it does not contain console logic.
@@ -36,7 +36,7 @@ The separation provides:
 - The user's explicit stack requirement (Vite + React + antd, not Next.js)
 
 ```
-launch-daemon/frontend/
+frontend/
 ├── package.json          # isolated deps
 ├── vite.config.ts        # standalone build
 ├── src/
@@ -79,16 +79,16 @@ launch-daemon/frontend/
 ## Consequences
 
 - **Positive:** Clean separation of concerns. Frontend and backend iterate
-  independently. `bun install` runs only inside `launch-daemon/frontend/` —
+  independently. `bun install` runs only inside `frontend/` —
   the root `package.json` is untouched. The host Next.js app is not affected.
   The console can be developed, built, and deployed independently.
 - **Negative:** Two separate frontend projects to maintain (host app +
   console). No shared components between them (mitigated: they serve
   different purposes — portal vs. operator console).
-- **Neutral:** The `eslint.config.mjs` includes a `"launch-daemon/**"` ignore
+- **Neutral:** The `eslint.config.mjs` includes a `"frontend/**"` ignore
   line to prevent the host app's linter from scanning the console's code.
 
 ## References
-- Console: `launch-daemon/frontend/`
-- Static serving: `launch-daemon/daemon/internal/api/static.go` (ADR-003)
+- Console: `frontend/`
+- Static serving: `daemon/internal/api/static.go` (ADR-003)
 - Plan: `1/plan.md` §9 item 3 (rejected Next.js console), T12

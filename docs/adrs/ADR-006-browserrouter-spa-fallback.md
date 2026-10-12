@@ -69,6 +69,6 @@ This decision was made by the user at review (Q5: "No — avoid HashRouter").
   latest version is always fetched for deep links.
 
 ## References
-- Implementation: `launch-daemon/daemon/internal/api/static.go`
-- Frontend router: `launch-daemon/frontend/src/App.tsx`
+- Implementation: `daemon/internal/api/static.go`
+- Frontend router: `frontend/src/App.tsx`
 - Plan: `1/plan.md` §0 (router), §9 item 10 (rejected HashRouter), §12 Q5

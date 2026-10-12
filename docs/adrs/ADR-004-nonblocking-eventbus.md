@@ -84,6 +84,6 @@ copy). Topic filtering (state vs. log) is handled at the subscriber level.
   recovers from any missed state events.
 
 ## References
-- Implementation: `launch-daemon/daemon/internal/eventbus/eventbus.go`
-- Frontend consumer: `launch-daemon/frontend/src/hooks/useEvents.ts`
+- Implementation: `daemon/internal/eventbus/eventbus.go`
+- Frontend consumer: `frontend/src/hooks/useEvents.ts`
 - Plan: `1/plan.md` §0 (adoption from Agent B)

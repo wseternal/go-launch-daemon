@@ -94,6 +94,6 @@ needed.
   — deferred to v2 if longer waits are required.
 
 ## References
-- Server handler: `launch-daemon/daemon/internal/api/agent.go`
-- SDK client: `launch-daemon/daemon/pkg/launchsdk/sdk.go`
+- Server handler: `daemon/internal/api/agent.go`
+- SDK client: `daemon/pkg/launchsdk/sdk.go`
 - Plan: `1/plan.md` §0 (SDK command transport), §9 item 9 (rejected short-poll)

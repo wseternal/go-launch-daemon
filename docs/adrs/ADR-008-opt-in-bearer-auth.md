@@ -87,7 +87,7 @@ confirmed").
   mechanism (ADR-001) — the bearer token applies only to the operator API.
 
 ## References
-- Implementation: `launch-daemon/daemon/internal/api/auth.go`
-- Tests: `launch-daemon/daemon/internal/api/services_test.go` (auth matrix)
-- Default bind: `launch-daemon/daemon/cmd/launchd/main.go`
+- Implementation: `daemon/internal/api/auth.go`
+- Tests: `daemon/internal/api/services_test.go` (auth matrix)
+- Default bind: `daemon/cmd/launchd/main.go`
 - Plan: `1/plan.md` §12 Q2, T7

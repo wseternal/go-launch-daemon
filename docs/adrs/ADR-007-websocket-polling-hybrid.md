@@ -87,7 +87,7 @@ ws.onmessage = (e) => {
   filtering.
 
 ## References
-- Frontend hook: `launch-daemon/frontend/src/hooks/useEvents.ts`
-- API client: `launch-daemon/frontend/src/api/client.ts`
-- EventBus: `launch-daemon/daemon/internal/eventbus/eventbus.go` (ADR-004)
+- Frontend hook: `frontend/src/hooks/useEvents.ts`
+- API client: `frontend/src/api/client.ts`
+- EventBus: `daemon/internal/eventbus/eventbus.go` (ADR-004)
 - Plan: `1/plan.md` §0 (polling strategy), §9 items 6-7 (rejected SSE, socket.io)
