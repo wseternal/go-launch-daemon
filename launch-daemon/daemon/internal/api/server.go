@@ -27,22 +27,24 @@ type ServerConfig struct {
 
 // Server is the launchd HTTP API server.
 type Server struct {
-	cfg       ServerConfig
-	mux       *http.ServeMux
-	httpSrv   *http.Server
-	listener  net.Listener
-	startTime time.Time
-	reg       *registry.Registry
-	sup       *supervisor.Supervisor
-	mu        sync.RWMutex
+	cfg         ServerConfig
+	mux         *http.ServeMux
+	httpSrv     *http.Server
+	listener    net.Listener
+	startTime   time.Time
+	reg         *registry.Registry
+	sup         *supervisor.Supervisor
+	pendingCmds map[string]chan struct{}
+	mu          sync.RWMutex
 }
 
 // NewServer creates a new API server with the given configuration.
 func NewServer(cfg ServerConfig) *Server {
 	s := &Server{
-		cfg:       cfg,
-		mux:       http.NewServeMux(),
-		startTime: time.Now(),
+		cfg:         cfg,
+		mux:         http.NewServeMux(),
+		startTime:   time.Now(),
+		pendingCmds: make(map[string]chan struct{}),
 	}
 	s.registerRoutes()
 	return s
