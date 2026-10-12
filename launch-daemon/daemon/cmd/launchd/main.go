@@ -14,6 +14,9 @@ import (
 	"time"
 
 	"launchd/internal/api"
+	"launchd/internal/eventbus"
+	"launchd/internal/registry"
+	"launchd/internal/supervisor"
 )
 
 const version = "0.1.0"
@@ -37,12 +40,18 @@ func main() {
 	if ld == "" {
 		ld = filepath.Join("run", "logs")
 	}
+	os.MkdirAll(ld, 0o755)
 
 	// Write PID file.
 	pidFile := filepath.Join("run", "launchd.pid")
 	if err := writePIDFile(pidFile); err != nil {
 		log.Fatalf("failed to write PID file: %v", err)
 	}
+
+	// Initialize core components.
+	reg := registry.New()
+	bus := eventbus.New()
+	sup := supervisor.New(reg, bus, ld, *addr)
 
 	srv := api.NewServer(api.ServerConfig{
 		Addr:      *addr,
@@ -52,6 +61,12 @@ func main() {
 		Token:     *token,
 		Version:   version,
 	})
+	srv.Wire(reg, sup)
+
+	// Start RunAtLoad services.
+	if err := sup.Start(); err != nil {
+		log.Printf("RunAtLoad start: %v", err)
+	}
 
 	if err := srv.Start(); err != nil {
 		os.Remove(pidFile)
@@ -67,6 +82,9 @@ func main() {
 
 	log.Println("shutting down...")
 
+	// Shutdown in order: supervisor (stops services), then HTTP server.
+	sup.Shutdown()
+
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -74,6 +92,7 @@ func main() {
 		log.Printf("shutdown error: %v", err)
 	}
 
+	bus.Close()
 	os.Remove(pidFile)
 	log.Println("stopped")
 }
