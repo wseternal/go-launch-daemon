@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -58,8 +59,11 @@ func (s *Server) Start() error {
 	}
 	s.listener = ln
 
+	// Wrap mux with gzip middleware and static fallback.
+	handler := gzipMiddleware(s.withStaticFallback())
+
 	s.httpSrv = &http.Server{
-		Handler:           s.mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       60 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -72,6 +76,26 @@ func (s *Server) Start() error {
 	}()
 
 	return nil
+}
+
+// withStaticFallback returns a handler that tries the mux first, then falls back to static files.
+func (s *Server) withStaticFallback() http.Handler {
+	static := staticHandler(s.cfg.StaticDir)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// API and agent routes go directly to the mux (no fallback).
+		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/agent/") {
+			s.mux.ServeHTTP(w, r)
+			return
+		}
+		// For other routes, try mux first, then static.
+		h, pattern := s.mux.Handler(r)
+		if pattern != "" {
+			h.ServeHTTP(w, r)
+			return
+		}
+		// Fall back to static handler.
+		static.ServeHTTP(w, r)
+	})
 }
 
 // Shutdown gracefully stops the HTTP server.
