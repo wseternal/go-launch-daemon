@@ -35,11 +35,6 @@ func (s *Server) registerAgentRoutes() {
 	s.mux.HandleFunc("GET /agent/v1/commands", s.handleAgentCommands)
 }
 
-// WireWithAgent sets up both operator and agent routes.
-func (s *Server) WireWithAgent() {
-	s.registerAgentRoutes()
-}
-
 func (s *Server) handleAgentRegister(w http.ResponseWriter, r *http.Request) {
 	// Verify session token from the Authorization header.
 	token := extractBearerToken(r)

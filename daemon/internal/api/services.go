@@ -36,12 +36,14 @@ type serviceResponse struct {
 }
 
 // Wire sets up the registry and supervisor for the API server.
+// It registers both the operator routes and the agent routes.
 func (s *Server) Wire(reg *registry.Registry, sup *supervisor.Supervisor) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.reg = reg
 	s.sup = sup
 	s.registerOperatorRoutes()
+	s.registerAgentRoutes()
 }
 
 func (s *Server) registerOperatorRoutes() {

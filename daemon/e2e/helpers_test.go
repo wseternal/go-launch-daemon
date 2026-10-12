@@ -43,17 +43,19 @@ func setup(t *testing.T) *testEnv {
 
 	reg := registry.New()
 	bus := eventbus.New()
-	sup := supervisor.New(reg, bus, logDir, "127.0.0.1:0")
 
 	srv := api.NewServer(api.ServerConfig{
 		Addr:    "127.0.0.1:0",
 		Version: "test",
 	})
-	srv.Wire(reg, sup)
-
 	if err := srv.Start(); err != nil {
 		t.Fatalf("server start: %v", err)
 	}
+
+	// Create the supervisor after the server starts. It injects the real
+	// listen address (not :0) into LAUNCHD_API_ADDR.
+	sup := supervisor.New(reg, bus, logDir, srv.Addr())
+	srv.Wire(reg, sup)
 
 	t.Cleanup(func() {
 		sup.Shutdown()
@@ -153,4 +155,26 @@ func (e *testEnv) waitForState(name, state string, timeout time.Duration) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	e.t.Fatalf("timeout: %s did not reach state %s within %v", name, state, timeout)
+}
+
+// waitForHeartbeat polls the API until the service reports a heartbeat.
+func (e *testEnv) waitForHeartbeat(name string, timeout time.Duration) {
+	e.t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		resp := e.apiGet("/api/v1/services/" + name)
+		var info struct {
+			Status struct {
+				HeartbeatAt *string `json:"heartbeatAt"`
+			} `json:"status"`
+		}
+		json.NewDecoder(resp.Body).Decode(&info)
+		resp.Body.Close()
+
+		if info.Status.HeartbeatAt != nil {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	e.t.Fatalf("timeout: %s did not send a heartbeat within %v", name, timeout)
 }

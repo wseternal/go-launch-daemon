@@ -34,26 +34,10 @@ func TestSDKIntegrationE2E(t *testing.T) {
 	// Wait for running.
 	env.waitForState("echo-sdk", "running", 10*time.Second)
 
-	// Wait a bit for the SDK to register and send a heartbeat.
-	time.Sleep(6 * time.Second)
+	// Wait for the SDK to register and send a heartbeat.
+	env.waitForHeartbeat("echo-sdk", 15*time.Second)
 
-	// Check that heartbeat was received.
-	resp = env.apiGet("/api/v1/services/echo-sdk")
-	var info struct {
-		Status struct {
-			State           string  `json:"state"`
-			HeartbeatAt     *string `json:"heartbeatAt"`
-			HeartbeatStatus string  `json:"heartbeatStatus"`
-		} `json:"status"`
-	}
-	json.NewDecoder(resp.Body).Decode(&info)
-	resp.Body.Close()
-
-	if info.Status.HeartbeatAt == nil {
-		t.Log("warning: no heartbeat received (SDK may not be connected)")
-	}
-
-	// Stop the service — the SDK should receive shutdown command and exit gracefully.
+	// Stop the service — SIGTERM cancels the signal context and the service exits gracefully.
 	resp = env.apiPost("/api/v1/services/echo-sdk/stop", nil)
 	if resp.StatusCode != 202 {
 		t.Fatalf("stop: expected 202, got %d", resp.StatusCode)
