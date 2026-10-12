@@ -1,7 +1,7 @@
 # Iteration 1 Plan — go-launch-daemon
 
 **Pipeline:** as-goal · Phase 4 · Step 1 (Architect, via `multi-agent-planning`)
-**Date:** 2026-10-12 · **Status:** awaiting user review (user-planned stop after this artifact)
+**Date:** 2026-10-12 · **Status:** user review complete — open questions Q1–Q6 resolved (§12); ready for Step 2 on user go-ahead
 **Inputs:** goal file · 5 frozen gates · 3 parallel read-only designs (Task 5-a Simplicity, 5-b Performance, 5-c Minimal-Change — full reports in each agent's worklog record)
 
 ---
@@ -16,8 +16,8 @@
 | Adoption from C | **spike-first ordering** (WS-through-Caddy proven before console code) · dual-mode portal (gateway vs direct :3000) · offline-fallback portal · eslint containment line · PID file + `dev-clean.sh` · hermetic `testsvc` binary · `Setpgid`/`Pdeathsig` child containment | de-risks the two live systems we must not break: the user-visible Next.js origin and the shared sandbox |
 | WS library | **`coder/websocket`** (ex-nhooyr) | ctx-native, actively maintained, auto ping handling — less deadline boilerplate; B explicitly neutral (both fine at ≤3 console clients) |
 | SDK command transport | **long-poll `?wait=5s`** | frozen gate-2 evidence names "command long-poll"; wait 5s < global WriteTimeout 15s → B's `ResponseController` deadline complexity is unnecessary; C's "defer long-poll" would soften a gate |
-| Static console serving | **disk `-static ../frontend/dist`** + B's gzip middleware | NOT `go:embed` (B's variant): embed forces a Go rebuild per frontend change; disk + `vite build --watch` keeps the dev loop tight; gzip still cuts the ~1 MB antd bundle to ~300 KB on the wire |
-| Router | **HashRouter** | zero SPA-fallback server logic, no gateway deep-link edge cases; hash invisible inside the iframe (A) |
+| Static console serving | **disk `-static ../frontend/dist`** + B's gzip middleware + SPA fallback (`index.html` for non-API GET) | NOT `go:embed` (B's variant): embed forces a Go rebuild per frontend change; disk + `vite build --watch` keeps the dev loop tight; gzip still cuts the ~1 MB antd bundle to ~300 KB on the wire; fallback enables BrowserRouter deep links (Q5) |
+| Router | **BrowserRouter** + SPA fallback in `static.go` | user decision (Q5: no HashRouter); clean `/api` + `/agent` prefix separation makes the fallback one check; real paths give working deep links through the gateway (Caddy forwards any path carrying `?XTransformPort=`) |
 | Polling strategy | WS-primary (`setQueryData` patch, `resync`→`invalidateQueries`), poll 2s **only while disconnected**, 30s WS watchdog | B's design, hardened with a watchdog so gate-4's "no manual refresh" never rides on one transport; C's polling-only console is the pre-designed contingency if the T2 spike fails |
 | Frontend lane | runs **alongside** the Go mainline in Step 2 | bench table: Frontend Engineer "plugs into Step 2 alongside Engineer"; each role keeps WIP-1 |
 | Git baseline | **new task T1b: initial commit of the uncommitted scaffold** | verified: repo has `.git` but the entire tree is uncommitted — conventional commits as gate evidence need a baseline |
@@ -210,13 +210,13 @@ docs/as-goals/go-launch-daemon/1/evidence/   # browser transcripts + screenshots
 
 ### T12 — Frontend console (Vite + React + antd latest)
 **Files:** `frontend/package.json` (+ `vite.config.ts`, `index.html`, `tsconfig.json`), `frontend/src/api/client.ts`, `frontend/src/hooks/useEvents.ts`, `frontend/src/pages/Services.tsx`, `frontend/src/pages/ServiceDetail.tsx` (+ `main.tsx`, `App.tsx`, `components/LogViewer.tsx`, `StatusBadge.tsx`)
-- **AC:** deps exact-pinned at install: `react`, `react-dom`, `antd`, `react-router`, `@tanstack/react-query`, `dayjs` + **`@ant-design/v5-patch-for-react-19` iff antd@5 is the latest major** (implementer checks `bun pm view antd version` first); dev: `vite`, `@vitejs/plugin-react`, `typescript`, `@types/*`; **bun install ONLY inside `launch-daemon/frontend/`** (root package.json untouched); `bun.lock` committed; actual versions recorded in README; **every request via one `api()` helper appending `XTransformPort=8800` — zero absolute URLs (grep-able)**; WS = `${location.protocol}//${location.host}/api/v1/events?XTransformPort=8800` (works in both iframe contexts: gateway-routed and direct :8800); state events patch cache via `queryClient.setQueryData`, `resync` → `invalidateQueries`, reconnect backoff 1s→16s + jitter, **poll 2 s only while disconnected**, 30 s WS watchdog → reconnect+invalidate; **HashRouter** routes `/` + `/services/:name`; Services page: antd Table (status Badge, PID, uptime, restarts, last exit, actions with Popconfirm + message feedback); Detail page: Descriptions (spec/policy) + LogViewer (150 ms batched flush, 500-row cap + "N skipped", autoscroll/pause); daemon health in header; token input (localStorage) when auth on; loading Skeletons, error message feedback, long lists `max-h-* overflow-y-auto`; responsive 375px→desktop
+- **AC:** deps exact-pinned at install: `react@19`, `react-dom@19`, **`antd@6`** (user decision Q6: latest major, native React 19 support — NO `@ant-design/v5-patch-for-react-19`), `react-router`, `@tanstack/react-query`, `dayjs`; dev: `vite`, `@vitejs/plugin-react`, `typescript`, `@types/*`; **bun install ONLY inside `launch-daemon/frontend/`** (root package.json untouched); `bun.lock` committed; actual versions recorded in README; **every request via one `api()` helper appending `XTransformPort=8800` — zero absolute URLs (grep-able)**; WS = `${location.protocol}//${location.host}/api/v1/events?XTransformPort=8800` (works in both iframe contexts: gateway-routed and direct :8800); state events patch cache via `queryClient.setQueryData`, `resync` → `invalidateQueries`, reconnect backoff 1s→16s + jitter, **poll 2 s only while disconnected**, 30 s WS watchdog → reconnect+invalidate; **BrowserRouter** routes `/` + `/services/:name` (user decision Q5 — no HashRouter; deep links rely on the T13 SPA fallback); Services page: antd Table (status Badge, PID, uptime, restarts, last exit, actions with Popconfirm + message feedback); Detail page: Descriptions (spec/policy) + LogViewer (150 ms batched flush, 500-row cap + "N skipped", autoscroll/pause); daemon health in header; token input (localStorage) when auth on; loading Skeletons, error message feedback, long lists `max-h-* overflow-y-auto`; responsive 375px→desktop
 - **V:** `bun run build` in frontend dir → dist/ zero errors; agent-browser through `http://localhost:81/?XTransformPort=8800`: table renders live services (direct daemon-served static once T13 wires it — until then vite preview for dev)
 - **Gates:** gate-4 artifacts 1/2/3 · **Rollback:** delete `frontend/`; root untouched
 
 ### T13 — Daemon static serving + gzip + Next.js portal
 **Files:** `daemon/internal/api/static.go`, `gzip.go`, `src/app/page.tsx`, `eslint.config.mjs` (+1 ignore line `"launch-daemon/**"`)
-- **AC:** static: disk serving from `-static ../frontend/dist` (missing → JSON 404, API-only mode); `Cache-Control: no-store` on `index.html`; hashed assets `public, max-age=31536000, immutable`; gzip middleware (stdlib `compress/gzip` + `sync.Pool`, ≥1 KB only, respects Accept-Encoding, skips WS/hijacked) — antd bundle ≥60% smaller on the wire; **portal:** dual-mode — gateway mode (port ≠3000) iframe `/?XTransformPort=8800` + relative health probe; direct mode (`:3000`) iframe `http://localhost:8800/` + `no-cors` probe (resolves = reachable); 401 counts as online; slim 48px header (zinc/emerald-amber status dot — **no blue/indigo**); iframe `calc(100dvh - 48px)`, no body scroll, no footer by design (full-viewport embedded app); daemon-down → offline panel with start command + retry + 5 s auto re-probe; **recursion guard** (`window.self !== window.top` → notice); `bun run lint` CLEAN at root; dev server NOT restarted (Turbopack hot-reload — confirm `GET / 200` in dev.log after edit)
+- **AC:** static: disk serving from `-static ../frontend/dist` (missing → JSON 404, API-only mode); **SPA fallback: GET paths outside `/api`|`/agent` serve `index.html` (BrowserRouter deep links, e.g. `/services/echo?XTransformPort=8800` via gateway); unknown `/api`|`/agent` paths stay JSON 404**; `Cache-Control: no-store` on `index.html`; hashed assets `public, max-age=31536000, immutable`; gzip middleware (stdlib `compress/gzip` + `sync.Pool`, ≥1 KB only, respects Accept-Encoding, skips WS/hijacked) — antd bundle ≥60% smaller on the wire; **portal:** dual-mode — gateway mode (port ≠3000) iframe `/?XTransformPort=8800` + relative health probe; direct mode (`:3000`) iframe `http://localhost:8800/` + `no-cors` probe (resolves = reachable); 401 counts as online; slim 48px header (zinc/emerald-amber status dot — **no blue/indigo**); iframe `calc(100dvh - 48px)`, no body scroll, no footer by design (full-viewport embedded app); daemon-down → offline panel with start command + retry + 5 s auto re-probe; **recursion guard** (`window.self !== window.top` → notice); `bun run lint` CLEAN at root; dev server NOT restarted (Turbopack hot-reload — confirm `GET / 200` in dev.log after edit)
 - **V:** `curl -H 'Accept-Encoding: gzip'` via `:81` → `Content-Encoding: gzip`; agent-browser at `http://localhost:81/` → portal → console; stop daemon → offline panel; restart → console returns; `bun run lint` → 0 errors
 - **Gates:** gate-4 artifacts 4/6 · **Rollback:** `git checkout src/app/page.tsx eslint.config.mjs`; delete static.go
 
@@ -251,7 +251,7 @@ External: go.dev tarball · npm registry · Caddy :81 frozen · Next :3000 stays
 | R1 | Go bootstrap fails (tarball+apt) | dual-source idempotent script; fail fast; escalate (network-failure exception) |
 | R2 | WS through Caddy fails first try | **T2 spike before console code**; polling-only contingency pre-designed; verdict artifact |
 | R3 | Portal edit breaks live user-visible app | single-file swap + recursion guard + offline fallback + lint clean + Turbopack hot-reload (no restart); rollback = 2 files |
-| R4 | antd v5 × React 19 incompat | conditional `@ant-design/v5-patch-for-react-19`, exact pins, lockfile committed, early render smoke |
+| R4 | antd v6 recency (latest major, user-mandated) | exact pins + committed lockfile; early render smoke in T12; if a broken v6 release surfaces, pin back to the last good v6 minor — never the v5 patch line (Q6) |
 | R5 | e2e flakiness | poll-based asserts 10–30 s, ephemeral `:0` ports, `CRASH_AFTER` determinism, serial `-p 1`, injectable backoff constants |
 | R6 | zombies/orphans on dev restarts | exactly-once Wait · Setpgid + group SIGKILL · Pdeathsig best-effort · SDK 15 s self-exit · PID file · `launchdctl shutdown` · dev-clean.sh |
 | R7 | state.json corruption | atomic tmp+rename; `.bad` quarantine + cold start; runtime state ephemeral by design |
@@ -280,6 +280,7 @@ External: go.dev tarball · npm registry · Caddy :81 frozen · Next :3000 stays
 7. **socket.io for events** — extra client+server protocol; Caddy query routing is already proven for plain WS (T2 spike + gateway's own socket.io examples).
 8. **Orphan auto-adoption** — without spawn ownership KeepAlive cannot be guaranteed; rejected (ADR-001, open question Q3).
 9. **Deferred long-poll (v1 short-poll)** — C's cut; frozen gate-2 evidence names "command long-poll"; `wait=5s` satisfies it without ResponseController complexity.
+10. **HashRouter** — rejected by the user (Q5); the SPA fallback in `static.go` costs one prefix check because `/api` and `/agent` are cleanly separated, and real paths preserve deep links through the gateway.
 
 ## 10. Task → gate mapping
 
@@ -295,12 +296,19 @@ External: go.dev tarball · npm registry · Caddy :81 frozen · Next :3000 stays
 
 Long-poll >5 s with ResponseController · log search/filter, multi-service streaming UI · restart-on-unhealthy (v1 restart is exit-driven; heartbeat is informational) · auto-resume of non-RunAtLoad services after daemon crash (predictable `registered`) · force-unregister running services · antd theming beyond one ConfigProvider token · WS log subscription multiplexing per service (v1 broadcasts with client-side filter) · T15 soak if budget pressure hits.
 
-## 12. Open questions for user review (beyond goal-file Q1–Q3)
+## 12. Review resolutions (user decisions, 2026-10-12)
 
-- **Q4:** T15 soak is stretch/non-gating — acceptable to defer if iteration budget tightens?
-- **Q5:** HashRouter (hash URLs inside the iframe) — acceptable UX trade for zero server fallback logic?
-- **Q6:** antd v5 + React 19 via `@ant-design/v5-patch-for-react-19` (conditional) — confirm approach, or pin React 18 instead? *(plan assumes latest of everything per the goal)*
+Goal-file Q1–Q3 and plan Q4–Q6 are all resolved. The plan text above already reflects every decision.
+
+| # | Question | Decision | Plan impact |
+|---|---|---|---|
+| Q1 | CLI in v1? | **Yes — `launchdctl` required** | T11 stays; goal success criterion 6 is firm (no longer open) |
+| Q2 | Auth default? | **Default OFF confirmed** | no change: loopback bind only; `-token`/`LAUNCHD_TOKEN` opt-in; console token input stays |
+| Q3 | Auto-adopt orphan SDK registrations? | **Rejected confirmed** | no change: 403 on unknown session token; ADR-001 records the rejection (§9 item 8) |
+| Q4 | 100-service soak? | **Yes — stretch, non-gating** | T15 stays as `-short`-skippable soak; deferral allowed if budget tightens; never blocks DONE |
+| Q5 | HashRouter acceptable? | **No — avoid HashRouter** | CHANGED: BrowserRouter + SPA fallback in `static.go` (§0, T12, T13, §9 item 10) |
+| Q6 | antd v5 + React-19 patch, or React 18? | **Neither — antd v6 (latest) + React 19** | CHANGED: `antd@6` exact-pinned, native React 19 support, patch package removed (T12, R4) |
 
 ---
 
-*Self-contained per the multi-agent-planning Output Contract: a downstream executor can implement from this document + the frozen gates without re-exploring the repo. Plan-approval gates are auto-approved by the as-goal autonomous caller context — except this run, where the user explicitly reserved the approval decision at this stop point.*
+*Self-contained per the multi-agent-planning Output Contract: a downstream executor can implement from this document + the frozen gates without re-exploring the repo. Plan-approval gates are auto-approved by the as-goal autonomous caller context — except this run, where the user explicitly reserved the approval decision at this stop point. User review completed 2026-10-12: all six open questions resolved (§12); two decisions (Q5 router, Q6 antd) changed the plan text in place.*

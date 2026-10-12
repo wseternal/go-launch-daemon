@@ -37,7 +37,7 @@ The user's stop instruction ("stop after phase 4's plan step, I need review all 
 3. **Supervision resilience (KeepAlive semantics)** — crashed services auto-restart per policy (always / on-failure / never) with exponential backoff and max-retry protection; per-service stdout/stderr is captured (ring buffer + log file).
 4. **Web console** — a Vite + React + antd dashboard: live service table, start/stop/restart actions, log viewer with live streaming; verified end-to-end in a real browser.
 5. **Secure by default** — control API binds loopback by default, optional bearer-token auth, validated inputs (no command injection via registration).
-6. **`launchdctl` CLI** — launchctl-style operator CLI (`list`, `start`, `stop`, `restart`, `status`, `log`, `register`) talking to the same API. *(open question — see below)*
+6. **`launchdctl` CLI** — launchctl-style operator CLI (`list`, `start`, `stop`, `restart`, `status`, `log`, `register`) talking to the same API. *(confirmed in v1 at review, 2026-10-12)*
 
 ## Constraints
 
@@ -59,11 +59,13 @@ The user's stop instruction ("stop after phase 4's plan step, I need review all 
 - Replacing or rewriting the host Next.js application (it stays a portal shell)
 - Real HMR through the sandbox gateway (documented dev loop: `vite build --watch` + browser refresh; direct `vite dev` remains available for non-sandbox local development)
 
-## Open Questions (resolve at review)
+## Open Questions (RESOLVED at review, 2026-10-12)
 
-1. **CLI scope:** is `launchdctl` (success criterion 6) in v1, or should the console be the only operator surface for iteration 1? *Plan currently includes it — it is cheap once the API exists and mirrors launchctl UX.*
-2. **Auth default:** token auth OFF by default (loopback bind only, as planned) or ON with a generated dev token printed at daemon boot? *Plan: OFF by default, `-token` flag / `LAUNCHD_TOKEN` env to enable; console supports entering a token.*
-3. **Auto-adopt:** should a service that self-registers via SDK but was started *outside* the daemon (orphan) be adopted (supervised without respawn guarantee) or rejected? *Plan: rejected in v1 — adoption without spawn ownership cannot guarantee KeepAlive; documented in ADR-001.*
+1. **CLI scope:** is `launchdctl` (success criterion 6) in v1, or should the console be the only operator surface for iteration 1? *Plan currently includes it — it is cheap once the API exists and mirrors launchctl UX.* → **ANSWERED: yes, `launchdctl` is required in v1 (plan task T11).**
+2. **Auth default:** token auth OFF by default (loopback bind only, as planned) or ON with a generated dev token printed at daemon boot? *Plan: OFF by default, `-token` flag / `LAUNCHD_TOKEN` env to enable; console supports entering a token.* → **ANSWERED: OFF by default confirmed.**
+3. **Auto-adopt:** should a service that self-registers via SDK but was started *outside* the daemon (orphan) be adopted (supervised without respawn guarantee) or rejected? *Plan: rejected in v1 — adoption without spawn ownership cannot guarantee KeepAlive; documented in ADR-001.* → **ANSWERED: rejected confirmed (403 on unknown session token; ADR-001).**
+
+*Plan questions Q4–Q6 (stretch soak, router, antd version) were resolved in the same review — decisions recorded in `1/plan.md` §12.*
 
 ## Created
 

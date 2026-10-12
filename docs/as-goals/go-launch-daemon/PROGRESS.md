@@ -1,7 +1,7 @@
 # PROGRESS — go-launch-daemon
 
 - **Goal file:** docs/as-goals/go-launch-daemon.md
-- **Current phase:** 4 Step 1 COMPLETE — **STOPPED FOR USER REVIEW** (user-planned stop after the plan step)
+- **Current phase:** 4 Step 1 COMPLETE — user review received (Q1–Q6 resolved, plan updated in place); awaiting final user go-ahead to start Step 2
 - **Iteration:** 1/10 (0 iterations of the execution budget consumed)
 
 **Autonomy rule:** When running with skill `as-goal`, always proceed autonomously to the next iteration/task without stopping to ask.
@@ -39,7 +39,7 @@
 
 | Iteration | Decision | Gates | Commits | Artifacts |
 |-----------|----------|-------|---------|-----------|
-| 1 | Step 1 complete — awaiting user approval of plan | 0/5 | - | [plan](1/plan.md) |
+| 1 | Step 1 complete — plan updated per user review (Q1–Q6 resolved); awaiting go-ahead | 0/5 | - | [plan](1/plan.md) |
 
 ## Open Defects
 
@@ -47,12 +47,14 @@ None yet (no implementation).
 
 ## Next Actions
 
-- [ ] **USER (blocking):** review all documents produced through Phase 4 Step 1 — reading order: goal file → gates → [1/plan.md](1/plan.md) → agents/ → this file. Confirm/correct, especially: goal-file open questions Q1–Q3 (CLI in v1, auth default, orphan policy) and plan questions Q4–Q6 (stretch soak, HashRouter, antd/React-19 patch approach)
-- [ ] On approval → Phase 4 Step 2: Engineer (Go mainline T0→T11) + Frontend Engineer (T12→T13 lane) implement `1/plan.md` with TDD, starting with T0 (Go bootstrap) and T1 (module skeletons + git baseline commit)
+- [x] **USER:** reviewed documents; resolved Q1–Q6 on 2026-10-12 — answers recorded in the goal file (Q1–Q3) and `1/plan.md` §12 (Q4–Q6); plan text updated in place
+- [ ] **USER (blocking):** confirm the updated plan → Phase 4 Step 2: Engineer (Go mainline T0→T11) + Frontend Engineer (T12→T13 lane) implement `1/plan.md` with TDD, starting with T0 (Go bootstrap) and T1 (module skeletons + git baseline commit)
 - [ ] Step 3: Test Engineer (+ Security Engineer on gate-5, Frontend Engineer on gate-4 evidence) → `1/review.md` + `1/evidence-manifest.md`
 - [ ] Step 4: Delivery Lead decision (DONE / LOOP with gap summary routed per failure table)
 
 ## Session Notes
+
+- 2026-10-12 — **user review received** (Q1–Q6): Q1 CLI in v1 → yes; Q2 auth default → OFF confirmed; Q3 orphan auto-adopt → rejected confirmed; Q4 100-service soak → kept as stretch, non-gating; Q5 HashRouter → **rejected by user, switched to BrowserRouter + SPA fallback in `static.go`** (plan §0, T12, T13, §9 item 10); Q6 antd approach → **antd v6 (latest) + React 19, no v5 patch package** (plan T12, R4). Artifacts updated: `1/plan.md` (9 in-place edits + §12 resolutions table), goal file (criterion 6 firmed, Q1–Q3 answered), this file. Step 2 still awaits the user's go-ahead per the active override.
 
 - 2026-10-12 ~19:55 UTC — **webDevReview cron run 4** (still no user approval → review tooling only, per cron contract): review console upgraded to **v4** — (a) **Plan task explorer** replacing the flat task table: lane-grouped rail (bootstrap / spike / core / frontend / hardening / stretch) + detail pane rendering each task's Files / Acceptance / Verification / Contingency / Rollback parsed live from `1/plan.md`, with prev/next stepping and a copy-task-brief button for pasting a task into chat; (b) **Traceability matrix** (Explorer ⇄ Traceability tabs): 16 tasks × 5 gates dot matrix with per-gate coverage footer (7/5/5/5/5 tasks), rows clickable → opens the task in the explorer; (c) **Session activity timeline**: digest of all 9 worklog entries (Task ID / agent / task, expandable work-log bullets + stage summary, latest auto-expanded) so the 166-min raw worklog no longer needs wading; (d) doc-viewer **reading-progress bar**; (e) **mobile header fix** (title no longer truncated at 375px — suffix + badge text hidden on small screens, controls wrap to their own row). QA: fresh browser session zero errors, desktop 1440px + mobile 375px, traceability counts hand-verified against the plan's gate strings, VLM visual QA PASS on explorer/matrix/timeline/mobile-header; `bun run lint` clean. Evidence: `1/evidence/qa-cron4-*.png`. Baseline QA of console v3 before changes was clean (no bugs found; dev.log 500s confirmed stale mid-edit artifacts).
 - 2026-10-12 ~19:25 UTC — **webDevReview cron run 3** (still no user approval → review tooling only, per cron contract): review console upgraded to a **decision-ready review workspace** — (a) **Decision workbench** for Q1–Q6: per-question verdict controls (Accept default / Alternative + note / Discuss) with the plan's proposed default shown on each card, persisted in localStorage via a hydration-safe store; (b) **Approval composer**: overall-verdict selector + generated markdown decision record (copy to chat / download .md — draft only; official approval still requires the user's chat message); (c) **⌘K full-text search palette** (cmdk Dialog with `shouldFilter={false}` custom search) with per-doc match counts and highlighted snippets — fixed during QA: cmdk's built-in filter hid content-only matches; (d) **risk register visualization** from plan §7 (12 cards, collapsible mitigations, console-generated thematic clusters); (e) **review packet export** (client-side blob with all 16 docs + decision record, no new route); (f) polish: reading time per doc, progress ring, framer-motion view transitions, stat-card icons/hover, header search + decisions chips. QA: fresh browser session zero errors, desktop 1440px + mobile 375px, VLM visual review passed; `bun run lint` clean. Evidence: `1/evidence/qa-cron3-*.png`.
